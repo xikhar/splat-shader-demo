@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NPR Splat Worlds — Shader Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="viewport"></canvas>
+
+      <!-- Drag handle for Split-Screen Compare -->
+      <div id="split-handle" class="split-handle" title="Drag to compare Raw Splat vs NPR Shader">
+        <div class="split-knob">
+          <span>RAW 3DGS</span>
+          <span class="split-arrows">↔</span>
+          <span id="split-right-label">MOEBIUS</span>
+        </div>
+      </div>
+
+      <!-- 3D Projected Spatial Audio Emitter Pins -->
+      <div id="audio-pins-layer" class="audio-pins-layer"></div>
+
+      <!-- Drag & Drop PLY / GLB overlay -->
+      <div id="drop-overlay" class="drop-overlay hidden">
+        <div class="drop-card">
+          <div class="drop-title">Drop a <code>.ply</code> or <code>.glb</code> model</div>
+          <p>Supports 3DGS <code>.ply</code> splats, colored <code>.ply</code> point clouds, and point-cloud or textured mesh <code>.glb</code> / <code>.gltf</code> files.</p>
+        </div>
+      </div>
+
+      <!-- Top-Left World Badge -->
+      <header class="hud-top-left glass">
+        <div class="eyebrow">NPR SPLAT WORLDS · SHADER STUDIO</div>
+        <h1 id="world-title">Moebius Monolith Ruin</h1>
+        <p id="world-subtitle" class="subtitle"></p>
+        <div class="meta-row">
+          <span id="stat-splats" class="chip">0 splats</span>
+          <span id="stat-fps" class="chip">60 fps</span>
+        </div>
+      </header>
+
+      <!-- Top-Right World Switcher & Actions -->
+      <nav class="hud-top-right">
+        <div id="world-tabs" class="segmented glass"></div>
+        <div class="action-row">
+          <button id="btn-audio" class="btn glass" title="Toggle 3D HRTF Spatial Web Audio">
+            <span class="dot" id="audio-dot"></span>
+            <span id="audio-btn-label">Spatial Audio</span>
+          </button>
+          <button id="btn-pins" class="btn glass active" title="Toggle 3D spatial audio emitter overlays">
+            Audio Pins
+          </button>
+          <label class="btn btn-accent file-btn" title="Import a .ply Gaussian splat / point cloud or .glb / .gltf 3D model">
+            Import .PLY / .GLB
+            <input id="input-import-file" type="file" accept=".ply,.glb,.gltf" hidden />
+          </label>
+          <button id="btn-hide-ui" class="btn glass" title="Hide UI chrome (H) — keeps a compact hoverable style bar at the bottom">
+            Hide UI
+          </button>
+        </div>
+      </nav>
+
+      <!-- Bottom NPR Shader Dock -->
+      <footer id="hud-bottom" class="hud-bottom glass">
+        <div class="dock-top">
+          <div id="shader-tabs" class="shader-tabs"></div>
+          <div class="dock-toggles">
+            <button id="btn-split" class="mini-pill active" title="Compare Raw Splat (left) vs NPR Shader (right)">
+              Split Compare
+            </button>
+            <button id="btn-auto-orbit" class="mini-pill" title="Gentle turntable orbit">
+              Auto-Orbit
+            </button>
+            <button id="btn-reset-cam" class="mini-pill" title="Reset camera (R)">
+              Reset
+            </button>
+            <button id="btn-show-ui" class="mini-pill show-ui-pill" title="Restore full UI (H)">
+              Show UI
+            </button>
+          </div>
+        </div>
+
+        <div class="dock-controls">
+          <div class="slider-wrap" title="Adjust raw 3DGS reconstruction floaters to compare against NPR cleanup">
+            <label for="slider-floaters">Raw Splat Floaters <strong id="val-floaters">55%</strong></label>
+            <input id="slider-floaters" type="range" min="0" max="1.2" step="0.05" value="0.55" />
+          </div>
+
+          <div class="slider-wrap">
+            <label for="slider-outline">Ink Outlines <strong id="val-outline">100%</strong></label>
+            <input id="slider-outline" type="range" min="0" max="1.6" step="0.05" value="1.0" />
+          </div>
+
+          <!-- Context control: Kuwahara Radius -->
+          <div id="ctrl-kuwahara" class="context-ctrl hidden">
+            <label>Brush Radius</label>
+            <div class="radio-pills" id="kuwahara-radii">
+              <button data-r="2" class="mini-pill">2 px</button>
+              <button data-r="4" class="mini-pill active">4 px</button>
+              <button data-r="6" class="mini-pill">6 px</button>
+            </div>
+          </div>
+
+          <!-- Context control: Obra Dinn Palette & Dither Stabilization -->
+          <div id="ctrl-obra" class="context-ctrl hidden">
+            <label>1-Bit Palette</label>
+            <select id="select-obra-palette" class="mini-select"></select>
+            <button id="btn-stabilize-dither" class="mini-pill active" title="Sphere-mapped view-direction dither eliminates screen swimming during camera rotation">
+              View-Stabilized Dither
+            </button>
+          </div>
+
+          <!-- Context control: Cobanov-style Pixel Art Splat -->
+          <div id="ctrl-pixel" class="context-ctrl hidden">
+            <label>Pixel</label>
+            <div class="radio-pills" id="pixel-sizes">
+              <button data-px="3" class="mini-pill">3</button>
+              <button data-px="4" class="mini-pill active">4</button>
+              <button data-px="6" class="mini-pill">6</button>
+              <button data-px="8" class="mini-pill">8</button>
+            </div>
+            <select id="select-pixel-palette" class="mini-select" title="Retro pixel-art palette"></select>
+            <div class="slider-wrap" style="min-width:110px" title="0% = crisp 2x2 majority vote; >0% = 2-color Bayer dithering">
+              <label for="slider-pixel-dither">Dither <strong id="val-pixel-dither">0%</strong></label>
+              <input id="slider-pixel-dither" type="range" min="0" max="1" step="0.05" value="0" />
+            </div>
+          </div>
+
+          <div id="shader-note" class="shader-note"></div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
